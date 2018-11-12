@@ -1,6 +1,6 @@
 ## jigsaw-cut
 
-拼图切图
+拼图切图
 
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
