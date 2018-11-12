@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+import JSZip from 'jszip'
+import saveAs from 'file-saver'
 
 import { loadImageAsync, cloneCanvas } from '../utils/util'
 
@@ -19,21 +21,28 @@ export default class CutResult extends Component {
     render() {
         const {
             props: {
-                pieceSize,
-                pieceRowCount,
-                pieceColumnCount,
+                cutData: {
+                    pieceSize,
+                    pieceRowCount,
+                    pieceColumnCount,
+                },
             },
             state: {
                 imgs,
             },
         } = this
-
+        
         return (
             <div
                 style={STYLES.container}
 
                 ref={this._handleRefContainer}
             >
+                <button
+                    onClick={this._handleClickDownloadAll}
+                >
+                    下载所有
+                </button>
                 <div
                     style={{
                         position: 'relative',
@@ -48,6 +57,7 @@ export default class CutResult extends Component {
                                 {
                                     top,
                                     left,
+                                    size,
                                     src,
                                 },
                                 i,
@@ -60,8 +70,8 @@ export default class CutResult extends Component {
                                         position: 'absolute',
                                         top,
                                         left,
-                                        width: pieceSize,
-                                        height: pieceSize,
+                                        width: size,
+                                        height: size,
                                     }}
                                 />
                             )
@@ -148,8 +158,11 @@ export default class CutResult extends Component {
                 unitCtx.clearRect(0, 0, unitCanvas.width, unitCanvas.height)
                 unitCtx.drawImage(canvas, i * pieceSize - dSize, j * pieceSize - dSize, unitCanvas.width, unitCanvas.height, 0, 0, unitCanvas.width, unitCanvas.height)
                 imgs.push({
+                    i,
+                    j,
                     top: j * pieceSize - dSize,
                     left: i * pieceSize - dSize,
+                    size: unitCanvas.width,
                     src: unitCanvas.toDataURL('image/png'),
                 })
             }
@@ -296,5 +309,21 @@ export default class CutResult extends Component {
                     : (x, y) => [-y * ratio + dx, x * ratio + dy]
             ),
         )
+    }
+
+    _handleClickDownloadAll = async () => {
+        const {
+            state: {
+                imgs,
+            },
+        } = this
+
+        const zip = new JSZip()
+        for (const {
+            i,
+            j,
+            src,
+        } of imgs) zip.file(`${j}-${i}.png`, src.slice('data:image/png;base64,'.length), { base64: true })
+        saveAs(await zip.generateAsync({ type: 'blob' }), '拼图')
     }
 }
