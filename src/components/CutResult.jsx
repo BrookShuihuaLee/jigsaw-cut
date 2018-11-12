@@ -1,27 +1,73 @@
 import React, { Component } from 'react'
 
-import { loadImageAsync } from '../utils/util'
+import { loadImageAsync, cloneCanvas } from '../utils/util'
 
 const STYLES = {
     container: {
         marginTop: 20,
         borderTop: '1px solid',
     },
-    canvas: {
-        margin: 10,
-    },
 }
 
 export default class CutResult extends Component {
     _elContainer
 
+    state = {
+        imgs: [],
+    }
+
     render() {
+        const {
+            props: {
+                pieceSize,
+                pieceRowCount,
+                pieceColumnCount,
+            },
+            state: {
+                imgs,
+            },
+        } = this
+
         return (
             <div
                 style={STYLES.container}
 
                 ref={this._handleRefContainer}
             >
+                <div
+                    style={{
+                        position: 'relative',
+                        width: pieceColumnCount * pieceSize,
+                        height: pieceRowCount * pieceSize,
+                        margin: 200,
+                    }}
+                >
+                    {
+                        imgs.map(
+                            (
+                                {
+                                    top,
+                                    left,
+                                    src,
+                                },
+                                i,
+                            ) => (
+                                <img
+                                    key={i}
+                                    src={src}
+                                    alt={i}
+                                    style={{
+                                        position: 'absolute',
+                                        top,
+                                        left,
+                                        width: pieceSize,
+                                        height: pieceSize,
+                                    }}
+                                />
+                            )
+                        )
+                    }
+                </div>
             </div>
         )
     }
@@ -37,37 +83,81 @@ export default class CutResult extends Component {
         const {
             props: {
                 cutData: {
-                    lineWith,
+                    pieceSize,
+                    pieceRowCount,
+                    pieceColumnCount,
+                    lineWidth,
                     strokeStyle,
                 },
             },
         } = this
-
         const imgCanvas = await this._getImgCanvas()
-        const ctx = imgCanvas.getContext('2d')
+        const canvas = cloneCanvas(imgCanvas)
+        const ctx = canvas.getContext('2d')
+        const unitCanvas = document.createElement('canvas')
+        unitCanvas.width = unitCanvas.height = Math.ceil(pieceSize * 1.64)
+        const unitCtx = unitCanvas.getContext('2d')
+        const dSize = (unitCanvas.width - pieceSize) / 2
+        const imgs = []
 
-        ctx.lineWidth = lineWith
+        ctx.lineWidth = lineWidth
         ctx.strokeStyle = strokeStyle
 
-        ctx.beginPath()
-        this._jigsawHBLineTo(ctx, 0, 1)
-        ctx.stroke()
-        ctx.closePath()
+        for (let i = 0; i < pieceColumnCount; i++) {
+            for (let j = 0; j < pieceRowCount; j++) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                ctx.save()
+                ctx.beginPath()
 
-        ctx.beginPath()
-        this._jigsawHTLineTo(ctx, 2, 1)
-        ctx.stroke()
-        ctx.closePath()
+                if (j) {
+                    ctx.moveTo(i * pieceSize, j * pieceSize)
+                    if ((i + j) & 1) this._jigsawHTLineTo(ctx, i + 1, j)
+                    else this._jigsawHBLineTo(ctx, i + 1, j)
+                } else {
+                    ctx.moveTo(i * pieceSize, j * pieceSize - lineWidth * 2)
+                    ctx.lineTo((i + 1) * pieceSize, j * pieceSize - lineWidth * 2)
+                }
+                if (i < pieceColumnCount - 1) {
+                    if ((i + j) & 1) this._jigsawVLLineTo(ctx, i + 1, j + 1)
+                    else this._jigsawVRLineTo(ctx, i + 1, j + 1)
+                } else {
+                    ctx.lineTo((i + 1) * pieceSize + lineWidth * 2, j * pieceSize)
+                    ctx.lineTo((i + 1) * pieceSize + lineWidth * 2, (j + 1) * pieceSize)
+                }
+                if (j < pieceRowCount - 1) {
+                    if ((i + j) & 1) this._jigsawHBLineTo(ctx, i + 1, j + 1, true)
+                    else this._jigsawHTLineTo(ctx, i + 1, j + 1, true)
+                } else {
+                    ctx.lineTo((i + 1) * pieceSize, (j + 1) * pieceSize + lineWidth * 2)
+                    ctx.lineTo(i * pieceSize, (j + 1) * pieceSize + lineWidth * 2)
+                }
+                if (i) {
+                    if ((i + j) & 1) this._jigsawVRLineTo(ctx, i, j + 1, true)
+                    else this._jigsawVLLineTo(ctx, i, j + 1, true)
+                } else {
+                    ctx.lineTo(i * pieceSize - lineWidth * 2, (j + 1) * pieceSize)
+                    ctx.lineTo(i * pieceSize - lineWidth * 2, j * pieceSize)
+                }
 
-        ctx.beginPath()
-        this._jigsawVRLineTo(ctx, 1, 0)
-        ctx.stroke()
-        ctx.closePath()
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(imgCanvas, 0, 0)
+                ctx.stroke()
+                ctx.restore()
 
-        ctx.beginPath()
-        this._jigsawVLLineTo(ctx, 1, 0)
-        ctx.stroke()
-        ctx.closePath()
+                unitCtx.clearRect(0, 0, unitCanvas.width, unitCanvas.height)
+                unitCtx.drawImage(canvas, i * pieceSize - dSize, j * pieceSize - dSize, unitCanvas.width, unitCanvas.height, 0, 0, unitCanvas.width, unitCanvas.height)
+                imgs.push({
+                    top: j * pieceSize - dSize,
+                    left: i * pieceSize - dSize,
+                    src: unitCanvas.toDataURL('image/png'),
+                })
+            }
+        }
+
+        this.setState({
+            imgs,
+        })
     }
 
     async _getImgCanvas() {
@@ -89,12 +179,12 @@ export default class CutResult extends Component {
         const ctx = imgCanvas.getContext('2d')
         ctx.drawImage(img, 0, 0, imgCanvas.width, imgCanvas.height)
         
-        this._elContainer.appendChild(imgCanvas)
+        // this._elContainer.appendChild(imgCanvas)
 
         return imgCanvas
     }
 
-    _jigsawLineTo(i, j, lineTo, bezierCurveTo) {
+    _jigsawLineTo(lineTo, bezierCurveTo) {
         lineTo(76, 0)
         bezierCurveTo(84.6, 0, 91.7, 7, 91.7, 15.7)
         lineTo(91.7, 17.3)
@@ -109,10 +199,8 @@ export default class CutResult extends Component {
         lineTo(228, 0)
     }
 
-    _jigsawLineToWithTransform(ctx, i, j, transform) {
+    _jigsawLineToWithTransform(ctx, transform) {
         return this._jigsawLineTo(
-            i,
-            j,
             (x, y) => ctx.lineTo(...transform(x, y)),
             (cp1x, cp1y, cp2x, cp2y, x, y) => ctx.bezierCurveTo(
                 ...transform(cp1x, cp1y),
@@ -136,8 +224,6 @@ export default class CutResult extends Component {
 
         this._jigsawLineToWithTransform(
             ctx,
-            i,
-            j,
             (
                 reversed
                     ? (x, y) => [pieceSize - x * ratio + dx, -y * ratio + dy]
@@ -156,17 +242,41 @@ export default class CutResult extends Component {
         } = this
         const ratio = pieceSize / 228
         let dx = i * pieceSize
+        let dy = (j - 1) * pieceSize
+
+        this._jigsawLineToWithTransform(
+            ctx,
+            (
+                reversed
+                    ? (x, y) => [y * ratio + dx, pieceSize - x * ratio + dy]
+                    : (x, y) => [y * ratio + dx, x * ratio + dy]
+            ),
+        )
+    }
+
+    _jigsawHBLineTo(ctx, i, j, reversed = false) {
+        const {
+            props: {
+                cutData: {
+                    pieceSize,
+                },
+            },
+        } = this
+        const ratio = pieceSize / 228
+        let dx = (i - 1) * pieceSize
         let dy = j * pieceSize
 
         this._jigsawLineToWithTransform(
             ctx,
-            i,
-            j,
-            (x, y) => [y * ratio + dx, x * ratio + dy],
+            (
+                reversed
+                    ? (x, y) => [pieceSize - x * ratio + dx, y * ratio + dy]
+                    : (x, y) => [x * ratio + dx, y * ratio + dy]
+            ),
         )
     }
 
-    _jigsawHBLineTo(ctx, i, j) {
+    _jigsawVLLineTo(ctx, i, j, reversed = false) {
         const {
             props: {
                 cutData: {
@@ -176,33 +286,15 @@ export default class CutResult extends Component {
         } = this
         const ratio = pieceSize / 228
         let dx = i * pieceSize
-        let dy = j * pieceSize
+        let dy = (j - 1) * pieceSize
 
         this._jigsawLineToWithTransform(
             ctx,
-            i,
-            j,
-            (x, y) => [x * ratio + dx, y * ratio + dy],
-        )
-    }
-
-    _jigsawVLLineTo(ctx, i, j) {
-        const {
-            props: {
-                cutData: {
-                    pieceSize,
-                },
-            },
-        } = this
-        const ratio = pieceSize / 228
-        let dx = i * pieceSize
-        let dy = j * pieceSize
-
-        this._jigsawLineToWithTransform(
-            ctx,
-            i,
-            j,
-            (x, y) => [-y * ratio + dx, x * ratio + dy],
+            (
+                reversed
+                    ? (x, y) => [-y * ratio + dx, pieceSize - x * ratio + dy]
+                    : (x, y) => [-y * ratio + dx, x * ratio + dy]
+            ),
         )
     }
 }

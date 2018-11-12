@@ -15,17 +15,17 @@ export default class JigsawCut extends Component {
         pieceSize: 200,
         pieceRowCount: 2,
         pieceColumnCount: 3,
-        lineWith: 3,
-        strokeStyle: 'rgba(0, 0, 0, 0.5)',
+        lineWidth: 3,
+        strokeStyle: 'rgba(0, 0, 0, 0.2)',
 
         // cutData: null,
         cutData: {
             imgSrc: IMAGE_EXAMPLE,
             pieceSize: 200,
-            pieceRowCount: 4,
+            pieceRowCount: 2,
             pieceColumnCount: 3,
-            lineWith: 3,
-            strokeStyle: 'rgba(0, 0, 0, 0.5)',
+            lineWidth: 3,
+            strokeStyle: 'rgba(0, 0, 0, 0.2)',
         },
     }
     
@@ -78,7 +78,7 @@ export default class JigsawCut extends Component {
                 pieceSize,
                 pieceRowCount,
                 pieceColumnCount,
-                lineWith,
+                lineWidth,
                 strokeStyle,
             },
         } = this
@@ -89,7 +89,7 @@ export default class JigsawCut extends Component {
                 pieceSize,
                 pieceRowCount,
                 pieceColumnCount,
-                lineWith,
+                lineWidth,
                 strokeStyle,
             },
         })
