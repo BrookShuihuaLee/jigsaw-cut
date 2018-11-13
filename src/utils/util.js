@@ -14,3 +14,9 @@ export function cloneCanvas(canvas) {
     ctx.drawImage(canvas, 0, 0)
     return c
 }
+
+export function parseIntWithDefault(v, defaultV = -1) {
+    v = parseInt(v)
+    if (isNaN(v)) v = defaultV
+    return v
+}

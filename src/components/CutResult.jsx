@@ -16,6 +16,7 @@ export default class CutResult extends Component {
 
     state = {
         imgs: [],
+        allSrc: '',
     }
 
     render() {
@@ -83,7 +84,7 @@ export default class CutResult extends Component {
     }
 
     _handleRefContainer = e => {
-        if (!e && this._elContainer === e) return
+        if (!e || this._elContainer === e) return
         this._elContainer = e
 
         this._cut()
@@ -170,6 +171,7 @@ export default class CutResult extends Component {
 
         this.setState({
             imgs,
+            allSrc: imgCanvas.toDataURL('image/png'),
         })
     }
 
@@ -315,10 +317,12 @@ export default class CutResult extends Component {
         const {
             state: {
                 imgs,
+                allSrc,
             },
         } = this
 
         const zip = new JSZip()
+        zip.file('all.png', allSrc.slice('data:image/png;base64,'.length), { base64: true })
         for (const {
             i,
             j,
